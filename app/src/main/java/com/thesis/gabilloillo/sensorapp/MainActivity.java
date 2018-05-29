@@ -24,10 +24,18 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "SensorAppPrefs";
-    private String emergeny_number = "911";
+    private String emergeny_number = "";
     private String caller_number = "";
+    String system_url ="http://www.google.com";
     // Used to load the 'native-lib' library on application startup.
     static {
         System.loadLibrary("native-lib");
@@ -39,17 +47,23 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        // Initialize Request system to comunicate with the sensor network
+        RequestQueue queue = Volley.newRequestQueue(this);
+        // Initialize view items references
         final TextView location_stream = (TextView) findViewById(R.id.location_stream);
         final EditText caller_et =(EditText)findViewById(R.id.caller_number);
         final EditText emergency_et =(EditText)findViewById(R.id.emergency_number);
         Button save_numbers = (Button)findViewById(R.id.save_numbers);
+        // Initialize location system
         LocationManager mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         // Shared preferences for number update
         final SharedPreferences settings = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        // Initialize view items values if they exists
         caller_number = settings.getString("user_phone", "");
         emergeny_number = settings.getString("emergency_phone", "");
-        Log.d("caller_check", caller_number);
-        Log.d("emergency_check", emergeny_number);
+        Log.d("caller_check", "c_check:" + caller_number);
+        Log.d("emergency_check", "em_check:" + emergeny_number);
+        Log.d("halp", "halp!");
 
         // Initialize caller and emergency numbers in the view
         if(!caller_number.equals("")) {
@@ -68,30 +82,40 @@ public class MainActivity extends AppCompatActivity {
                 // Modify vars, views and settings
                 if(!caller_aux.equals("") && !caller_aux.equals(caller_number)) {
                     caller_number = caller_aux;
-                    settings.edit().putString("user_phone", caller_number);
+                    settings.edit().putString("user_phone", caller_number).apply();
                     caller_et.setText(caller_number);
                 }
 
                 Log.d("emergency_aux", emergency_aux);
                 if(!emergency_aux.equals("") && !emergency_aux.equals(emergeny_number)) {
                     emergeny_number = emergency_aux;
-                    settings.edit().putString("emergency_phone", emergeny_number);
+                    settings.edit().putString("emergency_phone", emergeny_number).apply();
                     emergency_et.setText(emergeny_number);
                 }
-                // Save settings changes
-                settings.edit().apply();
             }
         });
 
-        // Testing get location only once
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        /**
+         ***************** Location Related **************************
+         */
+        // Location Permision initialization for fine_location (gps and network, > coarse_location, only network)
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                        this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+        {
             ActivityCompat.requestPermissions(this,
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     1234);
             return;
         }
-        Log.d("loc/once", mLocationManager.getLastKnownLocation(mLocationManager.
-                getBestProvider(new Criteria(), true)).toString());
+
+        Location location = mLocationManager.getLastKnownLocation(mLocationManager.
+                getBestProvider(new Criteria(), true));
+
+        if(location != null) {
+            Log.d("loc/once", location.toString());
+        }
+
         // Location listener
         final LocationListener mLocationListener = new LocationListener() {
             @Override
@@ -118,19 +142,14 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        // Location initialization
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                ) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    1234);
-            return;
-        }
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000,
+
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000,
                 0.0f, mLocationListener);
 
+        /*
+        ********************** Emergency Call Related ****************************
+         */
+        // Emergency button click action
         FloatingActionButton emergency_call = (FloatingActionButton) findViewById(R.id.emergency_call);
         emergency_call.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -166,6 +185,27 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        /*
+        ********************* Request Related **********************
+         */
+        // Request a string response from the provided URL.
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, system_url,
+            new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    // Display the first 500 characters of the response string.
+                    Log.d("response","Response is: "+ response.substring(0,50));
+                }
+            }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.d("responserr","That didn't work!");
+            }
+        });
+
+        // Add the request to the RequestQueue.
+        queue.add(stringRequest);
 
         // Example of a call to a native method
         //TextView tv = (TextView) findViewById(R.id.sample_text);
