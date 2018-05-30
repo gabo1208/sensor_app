@@ -1,6 +1,8 @@
 package com.thesis.gabilloillo.sensorapp;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -31,16 +33,22 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
     public static final String PREFS_NAME = "SensorAppPrefs";
     private String emergeny_number = "";
     private String caller_number = "";
-    String system_url ="http://www.google.com";
+    private String system_url ="http://www.google.com";
+    private String name = "";
+    private TextView location_stream;
     // Used to load the 'native-lib' library on application startup.
     static {
         System.loadLibrary("native-lib");
     }
 
+    @SuppressLint("MissingPermission")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -50,24 +58,34 @@ public class MainActivity extends AppCompatActivity {
         // Initialize Request system to comunicate with the sensor network
         RequestQueue queue = Volley.newRequestQueue(this);
         // Initialize view items references
-        final TextView location_stream = (TextView) findViewById(R.id.location_stream);
+        location_stream = (TextView) findViewById(R.id.location_stream);
         final EditText caller_et =(EditText)findViewById(R.id.caller_number);
         final EditText emergency_et =(EditText)findViewById(R.id.emergency_number);
+        final EditText system_et =(EditText)findViewById(R.id.endpoint_url);
+        final EditText name_et =(EditText)findViewById(R.id.caller_name);
         Button save_numbers = (Button)findViewById(R.id.save_numbers);
-        // Initialize location system
-        LocationManager mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
         // Shared preferences for number update
         final SharedPreferences settings = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         // Initialize view items values if they exists
         caller_number = settings.getString("user_phone", "");
         emergeny_number = settings.getString("emergency_phone", "");
+        system_url = settings.getString("endpoint_url", "");
+        name = settings.getString("name", "");
         Log.d("caller_check", "c_check:" + caller_number);
         Log.d("emergency_check", "em_check:" + emergeny_number);
-        Log.d("halp", "halp!");
+        Log.d("endpoint_check", "em_check:" + system_url);
+        Log.d("name_check", "em_check:" + name);
 
         // Initialize caller and emergency numbers in the view
         if(!caller_number.equals("")) {
             caller_et.setText(caller_number);
+        }
+        if(!system_url.equals("")) {
+            system_et.setText(system_url);
+        }
+        if(!name.equals("")) {
+            name_et.setText(name);
         }
         emergency_et.setText(emergeny_number);
 
@@ -78,6 +96,8 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 String caller_aux = String.valueOf(caller_et.getText());
                 String emergency_aux = String.valueOf(emergency_et.getText());
+                String systemurl_aux = String.valueOf(system_et.getText());
+                String name_aux = String.valueOf(name_et.getText());
                 Log.d("caller_aux", caller_aux);
                 // Modify vars, views and settings
                 if(!caller_aux.equals("") && !caller_aux.equals(caller_number)) {
@@ -92,102 +112,34 @@ public class MainActivity extends AppCompatActivity {
                     settings.edit().putString("emergency_phone", emergeny_number).apply();
                     emergency_et.setText(emergeny_number);
                 }
-            }
-        });
 
-        /**
-         ***************** Location Related **************************
-         */
-        // Location Permision initialization for fine_location (gps and network, > coarse_location, only network)
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                        this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-        {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    1234);
-            return;
-        }
-
-        Location location = mLocationManager.getLastKnownLocation(mLocationManager.
-                getBestProvider(new Criteria(), true));
-
-        if(location != null) {
-            Log.d("loc/once", location.toString());
-        }
-
-        // Location listener
-        final LocationListener mLocationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(final Location location) {
-                location_stream.setText(
-                    "lat: " +location.getLatitude() + ", long: " + location.getLongitude()
-                );
-                Log.d("locChange", location.toString());
-            }
-
-            @Override
-            public void onStatusChanged(String provider, int status, Bundle extras) {
-                Log.d("statChange", String.valueOf(status) + " " + extras.toString());
-            }
-
-            @Override
-            public void onProviderEnabled(String provider) {
-                Log.d("provEnabled", provider);
-            }
-
-            @Override
-            public void onProviderDisabled(String provider) {
-                Log.d("provDisabled", provider);
-            }
-        };
-
-
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000,
-                0.0f, mLocationListener);
-
-        /*
-        ********************** Emergency Call Related ****************************
-         */
-        // Emergency button click action
-        FloatingActionButton emergency_call = (FloatingActionButton) findViewById(R.id.emergency_call);
-        emergency_call.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // Show actions description to user
-                Snackbar.make(view, "Calling the emergency number and sending location and nearby sensors info",
-                        Snackbar.LENGTH_LONG).setAction("", null).show();
-                // Start emergency call
-                Intent callIntent = new Intent(Intent.ACTION_CALL); //use ACTION_CALL class
-                if(!emergeny_number.equals("")) {
-                    callIntent.setData(Uri.parse("tel:" + emergeny_number));    //this is the phone number calling
-                    //check permission
-                    //If the device is running Android 6.0 (API level 23) and the app's targetSdkVersion is 23 or higher,
-                    //the system asks the user to grant approval.
-                    if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.CALL_PHONE) !=
-                            PackageManager.PERMISSION_GRANTED) {
-                        //request permission from user if the app hasn't got the required permission
-                        ActivityCompat.requestPermissions(getParent(),
-                                new String[]{Manifest.permission.CALL_PHONE},   //request specific permission from user
-                                10);
-                        return;
-                    } else {     //have got permission
-                        try {
-                            startActivity(callIntent);  //call activity and make phone call
-                        } catch (android.content.ActivityNotFoundException ex) {
-                            Toast.makeText(getApplicationContext(),
-                                "SensorApp MainActivity was not found", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                }else{
-                    Toast.makeText(getApplicationContext(), "Please, enter an emergency number.",
-                        Toast.LENGTH_LONG).show();
+                Log.d("systemurl_aux", systemurl_aux);
+                if(!systemurl_aux.equals("") && !systemurl_aux.equals(system_url)) {
+                    system_url = systemurl_aux;
+                    settings.edit().putString("endpoint_url", system_url).apply();
+                    system_et.setText(system_url);
                 }
+
+                Log.d("name_aux", name_aux);
+                if(!name_aux.equals("") && !name_aux.equals(name)) {
+                    name = name_aux;
+                    settings.edit().putString("name", name).apply();
+                    name_et.setText(name);
+                }
+
+                Toast.makeText(getApplicationContext(), "Data Saved.",
+                        Toast.LENGTH_LONG).show();
             }
         });
 
+        if(checkAndRequestPermissions()) {
+            // Location related function
+            locationRelated(this, location_stream);
+            callRelated(this);
+        }
+
         /*
-        ********************* Request Related **********************
+        ********************* Requests Related **********************
          */
         // Request a string response from the provided URL.
         StringRequest stringRequest = new StringRequest(Request.Method.GET, system_url,
@@ -232,6 +184,132 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    /***
+     * Check all needed Permissions
+     */
+    private  boolean checkAndRequestPermissions() {
+        int permissionCallPhone = ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.CALL_PHONE);
+        int locationPermission = ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION);
+        List<String> listPermissionsNeeded = new ArrayList<>();
+        if (locationPermission != PackageManager.PERMISSION_GRANTED) {
+            listPermissionsNeeded.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+        if (permissionCallPhone != PackageManager.PERMISSION_GRANTED) {
+            listPermissionsNeeded.add(Manifest.permission.CALL_PHONE);
+        }
+        if (!listPermissionsNeeded.isEmpty()) {
+            ActivityCompat.requestPermissions(this,
+                    listPermissionsNeeded.toArray(
+                            new String[listPermissionsNeeded.size()]),1234
+            );
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     ***************** Location Related **************************
+     */
+    @SuppressLint("MissingPermission")
+    private void locationRelated(Context context, final TextView location_stream) {
+        // Initialize location system
+        LocationManager mLocationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        Location location = mLocationManager.getLastKnownLocation(mLocationManager.
+            getBestProvider(new Criteria(), true));
+
+        if (location != null) {
+            Log.d("loc/once", location.toString());
+        }
+
+        // Location listener
+        final LocationListener mLocationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(final Location location) {
+                location_stream.setText(
+                        "lat: " + location.getLatitude() + ", long: " + location.getLongitude()
+                );
+                Log.d("locChange", location.toString());
+            }
+
+            @Override
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+                Log.d("statChange", String.valueOf(status) + " " + extras.toString());
+            }
+
+            @Override
+            public void onProviderEnabled(String provider) {
+                Log.d("provEnabled", provider);
+            }
+
+            @Override
+            public void onProviderDisabled(String provider) {
+                Log.d("provDisabled", provider);
+            }
+        };
+
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000,
+                0.0f, mLocationListener);
+    }
+
+    /*
+     ********************** Emergency Call Related ****************************
+     */
+    @SuppressLint("MissingPermission")
+    private void callRelated(Context context){
+        // Emergency button click action
+        FloatingActionButton emergency_call = (FloatingActionButton) findViewById(R.id.emergency_call);
+        emergency_call.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Start emergency call
+                Intent callIntent = new Intent(Intent.ACTION_CALL); //use ACTION_CALL class
+                if (!emergeny_number.equals("")) {
+                    // Show actions description to user
+                    Snackbar.make(view, "Calling the emergency number and sending location and nearby sensors info",
+                            Snackbar.LENGTH_LONG).setAction("", null).show();
+                    callIntent.setData(Uri.parse("tel:" + emergeny_number));    //this is the phone number calling
+                    try {
+                        startActivity(callIntent);  //call activity and make phone call
+                    } catch (android.content.ActivityNotFoundException ex) {
+                        Toast.makeText(getApplicationContext(),
+                                "Something went wrong on emergency call", Toast.LENGTH_SHORT).show();
+                        Log.d("error_emer", "SensorApp MainActivity was not found");
+                    }
+                } else {
+                    Toast.makeText(getApplicationContext(), "Please, enter an emergency number.",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case 1234 : {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    locationRelated(this, location_stream);
+                } else {
+                    Toast.makeText(getApplicationContext(), "Location permission denied", Toast.LENGTH_SHORT).show();
+                }
+                if (grantResults.length > 1
+                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                    callRelated(this);
+                } else {
+                    Toast.makeText(getApplicationContext(), "Call permission denied", Toast.LENGTH_SHORT).show();
+                }
+
+                Toast.makeText(getApplicationContext(), "SensorApp Need its Permissions to work properly!.",
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+        }
     }
 
     /**
