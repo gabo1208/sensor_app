@@ -137,6 +137,26 @@
         </LinearLayout>
 
         <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAlignment="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Measure latency(ms):"
+                android:layout_marginRight="20dp"/>
+
+            <EditText
+                android:id="@+id/measure_latency"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="phone"
+                android:hint="1000"
+                android:maxLength="5"/>
+        </LinearLayout>
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center">

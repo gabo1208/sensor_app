@@ -46,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     private String system_url_endpoint ="/";
     private String sensor_iri ="";
     private String name = "";
+    private String measure_latency = "";
     private TextView location_stream;
     private TextView alerts_stream;
     private Boolean streaming = false;
@@ -75,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
         final EditText endpoint_et =(EditText)findViewById(R.id.endpoint_url);
         final EditText sensor_et =(EditText)findViewById(R.id.sensor_iri);
         final EditText name_et =(EditText)findViewById(R.id.caller_name);
+        final EditText measure_et =(EditText)findViewById(R.id.measure_latency);
         Button save_numbers = (Button)findViewById(R.id.save_numbers);
         final Button stream_data = (Button)findViewById(R.id.stream_measures);
 
@@ -87,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         system_url_endpoint = settings.getString("system_url_endpoint", "");
         sensor_iri = settings.getString("sensor_iri", "");
         name = settings.getString("name", "");
+        measure_latency = settings.getString("measure_latency", "1000");
         Log.d("caller_check", "c_check:" + caller_number);
         Log.d("emergency_check", "em_check:" + emergency_number);
         Log.d("endpoint_check", "em_check:" + system_url_root);
@@ -122,6 +125,7 @@ public class MainActivity extends AppCompatActivity {
                 String systemendpoint_aux = String.valueOf(endpoint_et.getText());
                 String sensoruri_aux = String.valueOf(sensor_et.getText());
                 String name_aux = String.valueOf(name_et.getText());
+                String measure_aux = String.valueOf(measure_et.getText());
                 Boolean empty = false;
                 String user_feedback = "Data Saved";
 
@@ -190,6 +194,17 @@ public class MainActivity extends AppCompatActivity {
                 }else{
                     empty = true;
                 }
+
+                if(!measure_aux.equals("")) {
+                    if(!measure_aux.equals(measure_latency)) {
+                        measure_latency = measure_aux;
+                        settings.edit().putString("measure_latency", measure_latency).apply();
+                        measure_et.setText(measure_latency);
+                    }
+                }else{
+                    empty = true;
+                }
+
 
                 if(empty){
                     user_feedback += ", please fill all the items";
@@ -334,8 +349,8 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000,
-                0.0f, mLocationListener);
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                Integer.valueOf(measure_latency),0.0f, mLocationListener);
     }
 
     /*
