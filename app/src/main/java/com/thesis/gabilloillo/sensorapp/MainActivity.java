@@ -327,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }else {
                     if (!alerts_stream.getText().equals("")) {
-                        alerts_stream.setText("");
+                        //alerts_stream.setText(""); hide coords
                         queue.cancelAll("location");
                     }
                 }
